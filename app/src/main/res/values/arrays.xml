@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="spinner_option">
+        <item>Common</item>
+        <item>Your only</item>
+        <item>Partners only</item>
+    </string-array>
+</resources>
