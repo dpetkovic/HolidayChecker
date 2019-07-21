@@ -2,6 +2,7 @@ package com.dekisolutions.holidaychecker
 
 import android.app.Application
 import com.dekisolutions.holidaychecker.di.dataModule
+import com.dekisolutions.holidaychecker.di.useCaseModule
 import com.dekisolutions.holidaychecker.di.viewModelModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -15,7 +16,7 @@ class HolidayCheckerApplication : Application() {
         startKoin {
             androidLogger()
             androidContext(this@HolidayCheckerApplication)
-            modules(listOf(viewModelModule, dataModule))
+            modules(listOf(viewModelModule, dataModule, useCaseModule))
         }
     }
 }

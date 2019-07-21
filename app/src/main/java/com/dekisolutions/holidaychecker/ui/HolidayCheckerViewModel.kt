@@ -11,50 +11,41 @@ import com.dekisolutions.holidaychecker.common.BaseAndroidViewModel
 import com.dekisolutions.holidaychecker.common.Logger
 import com.dekisolutions.holidaychecker.common.SingleLiveEvent
 import com.dekisolutions.holidaychecker.common.Utils
-import com.dekisolutions.holidaychecker.data.CountryRepository
-import com.dekisolutions.holidaychecker.data.HolidayRepository
 import com.dekisolutions.holidaychecker.data.select.HolidayResult
-import com.dekisolutions.holidaychecker.network.response.CountriesResponse
 import com.dekisolutions.holidaychecker.network.response.Country
-import com.dekisolutions.holidaychecker.network.response.HolidaysResponse
+import com.dekisolutions.holidaychecker.network.response.Holiday
+import com.dekisolutions.holidaychecker.usecase.GetCountriesUseCase
+import com.dekisolutions.holidaychecker.usecase.GetHolidaysUseCase
 import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.functions.BiFunction
-import io.reactivex.schedulers.Schedulers
 import java.net.UnknownHostException
 import java.text.SimpleDateFormat
 import java.util.*
 
 class HolidayCheckerViewModel(
     application: Application,
-    private val holidayRepository: HolidayRepository,
-    private val countryRepository: CountryRepository
+    private val getHolidaysUseCase: GetHolidaysUseCase,
+    private val getCountriesUseCase: GetCountriesUseCase
 ) : BaseAndroidViewModel(application) {
     private val tag = "HolidayCheckerViewModel"
 
     @SuppressLint("SimpleDateFormat")
     private val format = SimpleDateFormat("yyyy-MM-dd")
-    private val countriesLiveData: MutableLiveData<CountriesResponse> = MutableLiveData()
+    private val countriesLiveData: MutableLiveData<List<Country>> = MutableLiveData()
     private val selectedCountriesLiveData = MutableLiveData<Pair<Country?, Country?>>()
-    private val allHolidayLiveData: LiveData<Pair<HolidaysResponse, HolidaysResponse>> =
+    private val allHolidayLiveData: LiveData<Pair<List<Holiday>, List<Holiday>>> =
         Transformations.switchMap(selectedCountriesLiveData, Function { it ->
             Logger.d("switch trigger $it")
-            val result = MutableLiveData<Pair<HolidaysResponse, HolidaysResponse>>()
+            val result = MutableLiveData<Pair<List<Holiday>, List<Holiday>>>()
             if (it.first != null && it.first!!.code.isNotEmpty() && it.second != null && it.second!!.code.isNotEmpty()) {
-                addDisposable(holidayRepository.getHolidays(it.first?.code!!)
-                    .zipWith(
-                        holidayRepository.getHolidays(it.second?.code!!),
-                        BiFunction { t1: HolidaysResponse, t2: HolidaysResponse -> Pair(t1, t2) })
-                    .subscribeOn(Schedulers.io())
-                    .subscribe({
-                        Logger.d("result ready")
-                        result.postValue(it)
-                    }, {
-                        Log.d(tag, it.message)
-                        if (it is UnknownHostException) {
-                            noInternetLiveData.postValue(it.message)
-                        }
-                    })
-                )
+                addDisposable(getHolidaysUseCase.execute(Pair(it.first!!.code, it.second!!.code)).subscribe({
+                    Logger.d("result ready")
+                    result.postValue(it)
+                }, {
+                    Log.d(tag, it.message)
+                    if (it is UnknownHostException) {
+                        noInternetLiveData.postValue(it.message)
+                    }
+                }))
             }
             return@Function result
         })
@@ -66,7 +57,7 @@ class HolidayCheckerViewModel(
     })
     private val commonHolidayLiveData: LiveData<List<HolidayResult>> = Transformations.switchMap(allHolidayLiveData, Function { pair ->
         val result = MutableLiveData<List<HolidayResult>>()
-        val all = pair.first.holidays + pair.second.holidays
+        val all = pair.first + pair.second
         val commonList = all.groupBy { it.date }
             .filter { it.value.size > 1 }
             .map {
@@ -102,10 +93,10 @@ class HolidayCheckerViewModel(
 
     private val myHolidayLiveDate: LiveData<List<HolidayResult>> = Transformations.switchMap(allHolidayLiveData, Function { pair ->
         val result = MutableLiveData<List<HolidayResult>>()
-        val partnerDateMap = pair.second.holidays.groupBy {
+        val partnerDateMap = pair.second.groupBy {
             it.date
         }
-        val filteredResult = pair.first.holidays.filter {
+        val filteredResult = pair.first.filter {
              partnerDateMap[it.date] == null
         }. map { return@map HolidayResult(it.name, "", it.date, "") }
         result.postValue(filteredResult)
@@ -114,10 +105,10 @@ class HolidayCheckerViewModel(
 
     private val partnerHolidayLiveDate: LiveData<List<HolidayResult>> = Transformations.switchMap(allHolidayLiveData, Function { pair ->
         val result = MutableLiveData<List<HolidayResult>>()
-        val myDateMap = pair.first.holidays.groupBy {
+        val myDateMap = pair.first.groupBy {
             it.date
         }
-        val filteredResult = pair.second.holidays.filter {
+        val filteredResult = pair.second.filter {
             myDateMap[it.date] == null
         }.map {
             return@map HolidayResult("", it.name, it.date, "")
@@ -141,13 +132,13 @@ class HolidayCheckerViewModel(
         fetchCountries()
     }
 
-    fun getCountries(): LiveData<CountriesResponse> {
+    fun getCountries(): LiveData<List<Country>> {
         return countriesLiveData
     }
 
     fun fetchCountries() {
         addDisposable(
-            countryRepository.getCountries().subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe(
+            getCountriesUseCase.execute().observeOn(AndroidSchedulers.mainThread()).subscribe(
                 {
                     countriesLiveData.postValue(it)
                 },

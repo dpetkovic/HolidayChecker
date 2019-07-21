@@ -1,17 +1,13 @@
 package com.dekisolutions.holidaychecker.ui
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity;
-import android.view.Menu
-import android.view.MenuItem
-import android.view.View
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import com.dekisolutions.holidaychecker.R
 import com.dekisolutions.holidaychecker.common.Logger
 import com.dekisolutions.holidaychecker.ui.result.ResultFragment
 import com.dekisolutions.holidaychecker.ui.select.CountrySelectFragment
 import com.google.android.material.snackbar.Snackbar
-
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
 import org.koin.android.viewmodel.ext.android.viewModel

@@ -66,7 +66,7 @@ class CountrySelectFragment : Fragment() {
         viewModel.getCountries().observe(this, Observer {
             countryAdapter?.clear()
             countryAdapter?.add(Country("", "Please select a country", "", ""))
-            countryAdapter?.addAll(it.countries)
+            countryAdapter?.addAll(it)
             countryAdapter?.notifyDataSetChanged()
         })
     }
